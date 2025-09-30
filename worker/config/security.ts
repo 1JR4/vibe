@@ -41,12 +41,13 @@ export function getConfigurableSecurityDefaults(): ConfigurableSecuritySettings 
  */
 function getAllowedOrigins(env: Env): string[] {
     const origins: string[] = [];
-    
+
     // Production domains
     if (env.CUSTOM_DOMAIN) {
         origins.push(`https://${env.CUSTOM_DOMAIN}`);
+        origins.push(`https://www.${env.CUSTOM_DOMAIN}`);
     }
-    
+
     // Development origins (only in development)
     if (env.ENVIRONMENT === 'dev') {
         origins.push('http://localhost:3000');
@@ -54,7 +55,7 @@ function getAllowedOrigins(env: Env): string[] {
         origins.push('http://127.0.0.1:3000');
         origins.push('http://127.0.0.1:5173');
     }
-    
+
     return origins;
 }
 
