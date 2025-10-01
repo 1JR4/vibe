@@ -31,6 +31,8 @@ import { useGitHubExport } from '@/hooks/use-github-export';
 import { GitHubExportModal } from '@/components/github-export-modal';
 import { ModelConfigInfo } from './components/model-config-info';
 import { useAutoScroll } from '@/hooks/use-auto-scroll';
+import { StatusBar } from './components/status-bar';
+import { useStatusTracker } from './hooks/use-status-tracker';
 
 export default function Chat() {
 	const { chatId: urlChatId } = useParams();
@@ -48,6 +50,15 @@ export default function Chat() {
 
 	// Manual refresh trigger for preview
 	const [manualRefreshTrigger, setManualRefreshTrigger] = useState(0);
+
+	// Status tracking utilities
+	const {
+		activities: statusActivities,
+		lastMessageTimestamp,
+		websocketConnected,
+		trackWebSocketMessage,
+		updateWebSocketStatus,
+	} = useStatusTracker();
 
 	// Debug message utilities
 	const addDebugMessage = useCallback(
@@ -118,10 +129,38 @@ export default function Chat() {
 		query: userQuery,
 		agentMode: agentMode as 'deterministic' | 'smart',
 		onDebugMessage: addDebugMessage,
+		onStatusMessage: trackWebSocketMessage,
 	});
 
 	// GitHub export functionality - use urlChatId directly from URL params
 	const githubExport = useGitHubExport(websocket, urlChatId);
+
+	// Track WebSocket connection status
+	useEffect(() => {
+		if (!websocket) {
+			updateWebSocketStatus(false);
+			return;
+		}
+
+		const handleOpen = () => updateWebSocketStatus(true);
+		const handleClose = () => updateWebSocketStatus(false);
+		const handleError = () => updateWebSocketStatus(false);
+
+		websocket.addEventListener('open', handleOpen);
+		websocket.addEventListener('close', handleClose);
+		websocket.addEventListener('error', handleError);
+
+		// Set initial status based on current state
+		if (websocket.readyState === WebSocket.OPEN) {
+			updateWebSocketStatus(true);
+		}
+
+		return () => {
+			websocket.removeEventListener('open', handleOpen);
+			websocket.removeEventListener('close', handleClose);
+			websocket.removeEventListener('error', handleError);
+		};
+	}, [websocket, updateWebSocketStatus]);
 
 	const navigate = useNavigate();
 
@@ -463,6 +502,21 @@ export default function Chat() {
 
 	return (
 		<div className="size-full flex flex-col text-text-primary">
+			{/* Status Bar */}
+			<StatusBar
+				isGenerating={isGenerating}
+				isDeploying={isDeploying}
+				isPreviewDeploying={isPreviewDeploying}
+				isThinking={isThinking}
+				isGeneratingBlueprint={isGeneratingBlueprint}
+				progress={progress}
+				total={total}
+				projectStages={projectStages}
+				websocketConnected={websocketConnected}
+				lastMessageTimestamp={lastMessageTimestamp}
+				recentActivities={statusActivities}
+			/>
+
 			<div className="flex-1 flex min-h-0 justify-center">
 				<motion.div
 					layout="position"

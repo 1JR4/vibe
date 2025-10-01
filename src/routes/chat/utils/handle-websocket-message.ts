@@ -68,13 +68,14 @@ export interface HandleMessageDeps {
         messageType?: string,
         rawMessage?: unknown
     ) => void;
-    onTerminalMessage?: (log: { 
-        id: string; 
-        content: string; 
-        type: 'command' | 'stdout' | 'stderr' | 'info' | 'error' | 'warn' | 'debug'; 
-        timestamp: number; 
-        source?: string 
+    onTerminalMessage?: (log: {
+        id: string;
+        content: string;
+        type: 'command' | 'stdout' | 'stderr' | 'info' | 'error' | 'warn' | 'debug';
+        timestamp: number;
+        source?: string
     }) => void;
+    onStatusMessage?: (message: WebSocketMessage) => void;
 }
 
 export function createWebSocketMessageHandler(deps: HandleMessageDeps) {
@@ -114,12 +115,16 @@ export function createWebSocketMessageHandler(deps: HandleMessageDeps) {
             loadBootstrapFiles,
             onDebugMessage,
             onTerminalMessage,
+            onStatusMessage,
         } = deps;
+
+        // Track status for all messages
+        onStatusMessage?.(message);
 
         // Log messages except for frequent ones
         if (message.type !== 'file_chunk_generated' && message.type !== 'cf_agent_state' && message.type.length <= 50) {
             logger.info('received message', message.type, message);
-            onDebugMessage?.('websocket', 
+            onDebugMessage?.('websocket',
                 `${message.type}`,
                 JSON.stringify(message, null, 2),
                 'WebSocket',
