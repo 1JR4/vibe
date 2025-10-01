@@ -2,7 +2,7 @@ import { eq, and, desc, count, sql } from 'drizzle-orm';
 import { BaseService } from './BaseService';
 import { folders, appFolders, apps, type Folder, type NewFolder, type NewAppFolder } from '../schema';
 import type { FolderWithAppCount } from '../../api/controllers/folders/types';
-import { generateId } from '../../utils/id';
+import { generateId } from '../../utils/idGenerator';
 
 export class FolderService extends BaseService {
 	/**
@@ -73,7 +73,7 @@ export class FolderService extends BaseService {
 		folderData: { name: string; description?: string; color?: string; icon?: string }
 	): Promise<Folder> {
 		try {
-			const folderId = generateId('folder');
+			const folderId = generateId();
 
 			// Get the highest order value for this user
 			const maxOrderResult = await this.database
@@ -194,7 +194,7 @@ export class FolderService extends BaseService {
 
 			// Add to new folder
 			const newAppFolder: NewAppFolder = {
-				id: generateId('app_folder'),
+				id: generateId(),
 				appId,
 				folderId,
 			};

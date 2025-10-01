@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import type { StatusActivity } from '../components/status-bar';
 import type { WebSocketMessage } from '@/api-types';
 

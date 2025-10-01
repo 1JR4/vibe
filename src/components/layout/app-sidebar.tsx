@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import './sidebar-overrides.css';
 import { useRecentApps, useFavoriteApps, useApps } from '@/hooks/use-apps';
-import { useFolders, type FolderWithAppCount } from '@/hooks/use-folders';
+import { useFolders } from '@/hooks/use-folders';
 import {
 	Sidebar,
 	SidebarContent,

@@ -36,7 +36,7 @@ export function useFolders(): FolderHookState {
 			setError(null);
 			const response = await apiClient.getFolders();
 			if (response.success && response.data) {
-				setFolders(response.data.folders);
+				setFolders(response.data.folders as FolderWithAppCount[]);
 			} else {
 				throw new Error(response.error?.message || 'Failed to fetch folders');
 			}
@@ -75,7 +75,7 @@ export async function createFolder(folderData: {
 	try {
 		const response = await apiClient.createFolder(folderData);
 		if (response.success && response.data) {
-			return response.data.folder;
+			return response.data.folder as FolderWithAppCount;
 		}
 		throw new Error(response.error?.message || 'Failed to create folder');
 	} catch (err) {
@@ -102,7 +102,7 @@ export async function updateFolder(
 	try {
 		const response = await apiClient.updateFolder(folderId, updates);
 		if (response.success && response.data) {
-			return response.data.folder;
+			return response.data.folder as FolderWithAppCount;
 		}
 		throw new Error(response.error?.message || 'Failed to update folder');
 	} catch (err) {
