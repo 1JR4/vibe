@@ -9,11 +9,13 @@ import {
 	Lock,
 	Users2,
 	Bookmark,
-	// LayoutGrid,
+	Folder,
+	FolderOpen,
 	Compass,
 } from 'lucide-react';
 import './sidebar-overrides.css';
 import { useRecentApps, useFavoriteApps, useApps } from '@/hooks/use-apps';
+import { useFolders, type FolderWithAppCount } from '@/hooks/use-folders';
 import {
 	Sidebar,
 	SidebarContent,
@@ -41,6 +43,10 @@ import {
 } from '@/components/ui/tooltip';
 import { formatDistanceToNow, isValid } from 'date-fns';
 import { AppActionsDropdown } from '@/components/shared/AppActionsDropdown';
+import { FolderActionsDropdown } from '@/components/shared/FolderActionsDropdown';
+import { FolderDialog, type FolderFormData } from '@/components/shared/FolderDialog';
+import { createFolder } from '@/hooks/use-folders';
+import { toast } from 'sonner';
 
 interface App {
 	id: string;
@@ -153,7 +159,10 @@ export function AppSidebar() {
 	const [expandedGroups, setExpandedGroups] = React.useState<string[]>([
 		'apps',
 		'boards',
+		'folders',
 	]);
+	const [expandedFolders, setExpandedFolders] = React.useState<string[]>([]);
+	const [isCreateFolderDialogOpen, setIsCreateFolderDialogOpen] = React.useState(false);
 	const { state } = useSidebar();
 	const isCollapsed = state === 'collapsed';
 
@@ -161,8 +170,28 @@ export function AppSidebar() {
 	const { apps: recentApps, moreAvailable } = useRecentApps();
 	const { apps: favoriteApps } = useFavoriteApps();
 	const { apps: allApps, loading: allAppsLoading } = useApps();
+	const { folders, loading: foldersLoading, refetch: refetchFolders } = useFolders();
 
 	const boards: Board[] = []; // Remove mock boards
+
+	// Group apps by folder
+	const appsByFolder = React.useMemo(() => {
+		const folderMap = new Map<string, App[]>();
+		const unfiledApps: App[] = [];
+
+		// Initialize folder map with empty arrays
+		folders.forEach((folder) => {
+			folderMap.set(folder.id, []);
+		});
+
+		// TODO: Once we fetch apps with folder info, group them here
+		// For now, all apps are unfiled
+		allApps.forEach((app) => {
+			unfiledApps.push(app);
+		});
+
+		return { folderMap, unfiledApps };
+	}, [folders, allApps]);
 
 	// Search functionality - filter all apps based on search query
 	const searchResults = React.useMemo(() => {
@@ -194,6 +223,26 @@ export function AppSidebar() {
 				? prev.filter((g) => g !== group)
 				: [...prev, group],
 		);
+	};
+
+	const toggleFolder = (folderId: string) => {
+		setExpandedFolders((prev) =>
+			prev.includes(folderId)
+				? prev.filter((id) => id !== folderId)
+				: [...prev, folderId],
+		);
+	};
+
+	const handleCreateFolder = async (data: FolderFormData) => {
+		try {
+			await createFolder(data);
+			toast.success('Folder created successfully');
+			setIsCreateFolderDialogOpen(false);
+			refetchFolders();
+		} catch (error) {
+			console.error('Error creating folder:', error);
+			throw error;
+		}
 	};
 
 	if (!user) return;
@@ -390,6 +439,216 @@ export function AppSidebar() {
 									</SidebarGroupContent>
 								)}
 							</SidebarGroup>
+
+							{/* Folders */}
+							{folders.length > 0 && !isSearching && (
+								<>
+									<SidebarSeparator />
+									<SidebarGroup className="mt-4">
+										<SidebarGroupLabel
+											className={cn(
+												'flex items-center cursor-pointer hover:text-text-primary transition-colors',
+												isCollapsed
+													? 'justify-center px-0'
+													: 'justify-between',
+											)}
+											onClick={() =>
+												toggleGroup('folders')
+											}
+										>
+											{isCollapsed ? (
+												<TooltipProvider
+													delayDuration={0}
+												>
+													<Tooltip>
+														<TooltipTrigger>
+															<Folder className="h-4 w-4" />
+														</TooltipTrigger>
+														<TooltipContent
+															side="right"
+															className="ml-2"
+														>
+															Folders
+														</TooltipContent>
+													</Tooltip>
+												</TooltipProvider>
+											) : (
+												<>
+													<div className="flex items-center gap-2">
+														<Folder className="h-4 w-4" />
+														<span>Folders</span>
+													</div>
+													<ChevronRight
+														className={cn(
+															'h-4 w-4 transition-transform',
+															expandedGroups.includes(
+																'folders',
+															) && 'rotate-90',
+														)}
+													/>
+												</>
+											)}
+										</SidebarGroupLabel>
+										{expandedGroups.includes('folders') && (
+											<SidebarGroupContent>
+												<SidebarMenu>
+													{foldersLoading ? (
+														<SidebarMenuItem>
+															<div className="flex items-center justify-center py-4">
+																<div className="text-sm text-text-tertiary">
+																	Loading folders...
+																</div>
+															</div>
+														</SidebarMenuItem>
+													) : (
+														folders.map((folder) => {
+															const isExpanded =
+																expandedFolders.includes(
+																	folder.id,
+																);
+															const folderApps =
+																appsByFolder.folderMap.get(
+																	folder.id,
+																) || [];
+
+															return (
+																<React.Fragment
+																	key={
+																		folder.id
+																	}
+																>
+																	<SidebarMenuItem className="group/folder">
+																		<SidebarMenuButton
+																			onClick={() =>
+																				toggleFolder(
+																					folder.id,
+																				)
+																			}
+																			tooltip={
+																				folder.name
+																			}
+																			className="folder-item-button pr-0"
+																		>
+																			<div className="flex items-center gap-2 flex-1 min-w-0 pr-2">
+																				{isExpanded ? (
+																					<FolderOpen className="h-4 w-4 flex-shrink-0" />
+																				) : (
+																					<Folder className="h-4 w-4 flex-shrink-0" />
+																				)}
+																				<span className="font-medium truncate">
+																					{
+																						folder.name
+																					}
+																				</span>
+																				<span className="text-xs text-text-tertiary flex-shrink-0">
+																					(
+																					{
+																						folder.appCount
+																					}
+																					)
+																				</span>
+																			</div>
+																			<ChevronRight
+																				className={cn(
+																					'h-4 w-4 transition-transform flex-shrink-0',
+																					isExpanded &&
+																						'rotate-90',
+																				)}
+																			/>
+																		</SidebarMenuButton>
+
+																		{!isCollapsed && (
+																			<SidebarMenuAction
+																				asChild
+																				className="opacity-0 -mr-2 group-hover/folder:opacity-100 transition-opacity"
+																			>
+																				<FolderActionsDropdown
+																					folder={
+																						folder
+																					}
+																					onFolderUpdated={
+																						refetchFolders
+																					}
+																					onFolderDeleted={
+																						refetchFolders
+																					}
+																					size="sm"
+																					className="h-6 w-6"
+																					showOnHover={
+																						false
+																					}
+																				/>
+																			</SidebarMenuAction>
+																		)}
+																	</SidebarMenuItem>
+
+																	{isExpanded &&
+																		folderApps.map(
+																			(
+																				app,
+																			) => (
+																				<div
+																					key={
+																						app.id
+																					}
+																					className="pl-6"
+																				>
+																					<AppMenuItem
+																						app={
+																							app
+																						}
+																						onClick={(
+																							id,
+																						) =>
+																							navigate(
+																								`/app/${id}`,
+																							)
+																						}
+																						variant="recent"
+																						showActions={
+																							true
+																						}
+																						isCollapsed={
+																							isCollapsed
+																						}
+																						getVisibilityIcon={
+																							getVisibilityIcon
+																						}
+																					/>
+																				</div>
+																			),
+																		)}
+																</React.Fragment>
+															);
+														})
+													)}
+
+													{!foldersLoading && (
+														<SidebarMenuItem>
+															<SidebarMenuButton
+																onClick={() =>
+																	setIsCreateFolderDialogOpen(
+																		true,
+																	)
+																}
+																tooltip="Create new folder"
+																className="text-text-tertiary hover:text-text-primary mt-2"
+															>
+																<Plus className="h-4 w-4" />
+																{!isCollapsed && (
+																	<span className="font-medium text-text-primary/80">
+																		Create folder
+																	</span>
+																)}
+															</SidebarMenuButton>
+														</SidebarMenuItem>
+													)}
+												</SidebarMenu>
+											</SidebarGroupContent>
+										)}
+									</SidebarGroup>
+								</>
+							)}
 
 							{/* Favorites */}
 							{favoriteApps.length > 0 && (
@@ -598,6 +857,13 @@ export function AppSidebar() {
 					)}
 				</SidebarFooter>
 			</Sidebar>
+
+			<FolderDialog
+				open={isCreateFolderDialogOpen}
+				onOpenChange={setIsCreateFolderDialogOpen}
+				onSave={handleCreateFolder}
+				mode="create"
+			/>
 		</>
 	);
 }

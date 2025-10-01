@@ -1151,6 +1151,87 @@ class ApiClient {
 		// Redirect to OAuth provider
 		window.location.href = oauthUrl.toString();
 	}
+
+	// ===============================
+	// Folder API Methods
+	// ===============================
+
+	/**
+	 * Get all folders for the authenticated user
+	 */
+	async getFolders(): Promise<ApiResponse<{ folders: unknown[] }>> {
+		return this.request<{ folders: unknown[] }>('/api/folders');
+	}
+
+	/**
+	 * Get a single folder by ID
+	 */
+	async getFolder(folderId: string): Promise<ApiResponse<{ folder: unknown }>> {
+		return this.request<{ folder: unknown }>(`/api/folders/${folderId}`);
+	}
+
+	/**
+	 * Create a new folder
+	 */
+	async createFolder(folderData: {
+		name: string;
+		description?: string;
+		color?: string;
+		icon?: string;
+	}): Promise<ApiResponse<{ folder: unknown }>> {
+		return this.request<{ folder: unknown }>('/api/folders', {
+			method: 'POST',
+			body: folderData,
+		});
+	}
+
+	/**
+	 * Update a folder
+	 */
+	async updateFolder(
+		folderId: string,
+		updates: {
+			name?: string;
+			description?: string;
+			color?: string;
+			icon?: string;
+			order?: number;
+		}
+	): Promise<ApiResponse<{ folder: unknown }>> {
+		return this.request<{ folder: unknown }>(`/api/folders/${folderId}`, {
+			method: 'PUT',
+			body: updates,
+		});
+	}
+
+	/**
+	 * Delete a folder
+	 */
+	async deleteFolder(folderId: string): Promise<ApiResponse<{ success: boolean; message: string }>> {
+		return this.request<{ success: boolean; message: string }>(`/api/folders/${folderId}`, {
+			method: 'DELETE',
+		});
+	}
+
+	/**
+	 * Move an app to a folder (or remove from folder if folderId is null)
+	 */
+	async moveAppToFolder(
+		appId: string,
+		folderId: string | null
+	): Promise<ApiResponse<{ success: boolean; message: string }>> {
+		return this.request<{ success: boolean; message: string }>('/api/folders/move', {
+			method: 'POST',
+			body: { appId, folderId },
+		});
+	}
+
+	/**
+	 * Get apps in a folder
+	 */
+	async getAppsInFolder(folderId: string): Promise<ApiResponse<{ apps: unknown[] }>> {
+		return this.request<{ apps: unknown[] }>(`/api/folders/${folderId}/apps`);
+	}
 }
 
 // Export singleton instance

@@ -220,6 +220,47 @@ export const stars = sqliteTable('stars', {
     appIdx: index('stars_app_idx').on(table.appId),
 }));
 
+/**
+ * Folders table - User-created folders for organizing apps
+ */
+export const folders = sqliteTable('folders', {
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+
+    // Folder Details
+    name: text('name').notNull(),
+    description: text('description'),
+    color: text('color'), // Hex color code for visual distinction
+    icon: text('icon'), // Icon identifier (e.g., lucide icon name)
+
+    // Ordering
+    order: integer('order').notNull().default(0), // For custom sorting
+
+    // Metadata
+    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+    userIdx: index('folders_user_idx').on(table.userId),
+    userOrderIdx: index('folders_user_order_idx').on(table.userId, table.order),
+}));
+
+/**
+ * AppFolders table - Junction table for app-folder relationships
+ * Allows apps to be organized into user-created folders
+ */
+export const appFolders = sqliteTable('app_folders', {
+    id: text('id').primaryKey(),
+    appId: text('app_id').notNull().references(() => apps.id, { onDelete: 'cascade' }),
+    folderId: text('folder_id').notNull().references(() => folders.id, { onDelete: 'cascade' }),
+
+    // Metadata
+    addedAt: integer('added_at', { mode: 'timestamp' }).default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+    appFolderIdx: uniqueIndex('app_folders_app_folder_idx').on(table.appId, table.folderId),
+    appIdx: index('app_folders_app_idx').on(table.appId),
+    folderIdx: index('app_folders_folder_idx').on(table.folderId),
+}));
+
 // ========================================
 // COMMUNITY INTERACTIONS
 // ========================================
@@ -613,3 +654,9 @@ export type NewUserModelProvider = typeof userModelProviders.$inferInsert;
 
 export type Star = typeof stars.$inferSelect;
 export type NewStar = typeof stars.$inferInsert;
+
+export type Folder = typeof folders.$inferSelect;
+export type NewFolder = typeof folders.$inferInsert;
+
+export type AppFolder = typeof appFolders.$inferSelect;
+export type NewAppFolder = typeof appFolders.$inferInsert;

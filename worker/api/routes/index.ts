@@ -10,6 +10,7 @@ import { setupGitHubExporterRoutes } from './githubExporterRoutes';
 import { setupCodegenRoutes } from './codegenRoutes';
 import { setupScreenshotRoutes } from './screenshotRoutes';
 import { setupSentryRoutes } from './sentryRoutes';
+import { setupFolderRoutes } from './folderRoutes';
 import { Hono } from "hono";
 import { AppEnv } from "../../types/appenv";
 
@@ -33,7 +34,10 @@ export function setupRoutes(app: Hono<AppEnv>): void {
     
     // App management routes
     setupAppRoutes(app);
-    
+
+    // Folder management routes
+    setupFolderRoutes(app);
+
     // Stats routes
     setupStatsRoutes(app);
     
