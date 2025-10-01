@@ -302,21 +302,47 @@ export class CodingAgentController extends BaseController {
             try {
                 // Get the agent instance
                 const agentInstance = await getAgentStub(env, agentId, true, this.logger);
-                
-                // Deploy the preview
+
+                this.logger.info('Agent instance retrieved, starting deployment');
+
+                // Deploy the preview with detailed error handling
                 const preview = await agentInstance.deployToSandbox();
+
                 if (!preview) {
-                    return CodingAgentController.createErrorResponse<AgentPreviewResponse>('Failed to deploy preview', 500);
+                    this.logger.error('Deploy returned null/undefined', { agentId });
+                    return CodingAgentController.createErrorResponse<AgentPreviewResponse>(
+                        'Deployment failed: No preview URL was generated. The sandbox may not have started correctly.',
+                        500
+                    );
                 }
+
                 this.logger.info('Preview deployed successfully', {
                     agentId,
-                    previewUrl: preview.previewURL
+                    previewUrl: preview.previewURL,
+                    runId: preview.runId
                 });
 
                 return CodingAgentController.createSuccessResponse(preview);
             } catch (error) {
-                this.logger.error('Failed to deploy preview', { agentId, error });
-                return CodingAgentController.createErrorResponse<AgentPreviewResponse>('Failed to deploy preview', 500);
+                this.logger.error('Failed to deploy preview', {
+                    agentId,
+                    error: error instanceof Error ? error.message : String(error),
+                    stack: error instanceof Error ? error.stack : undefined
+                });
+
+                // Provide more specific error messages based on error type
+                let errorMessage = 'Failed to deploy preview';
+                if (error instanceof Error) {
+                    if (error.message.includes('timeout') || error.message.includes('timed out')) {
+                        errorMessage = 'Deployment timeout: The sandbox is taking longer than expected to start. This may be due to high load or container initialization issues.';
+                    } else if (error.message.includes('Failed to create sandbox instance')) {
+                        errorMessage = 'Failed to create sandbox instance: The container service may be unavailable or overloaded.';
+                    } else {
+                        errorMessage = `Deployment error: ${error.message}`;
+                    }
+                }
+
+                return CodingAgentController.createErrorResponse<AgentPreviewResponse>(errorMessage, 500);
             }
         } catch (error) {
             this.logger.error('Error deploying preview', error);
